@@ -1,0 +1,193 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AES-CBC Encryption with Bootstrap</title>
+    <!-- Link to Bootstrap -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/css/bootstrap.min.css" rel="stylesheet" />
+    <!-- Link to Bootstrap Icons -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons/font/bootstrap-icons.css" rel="stylesheet">
+    <!-- Link to CryptoJS -->
+    <script src="https://cdn.jsdelivr.net/npm/crypto-js@4.1.1/crypto-js.js"></script>
+    <style>
+        .spinner-container {
+            display: none;
+            text-align: center;
+            margin-top: 20px;
+        }
+        .spinner-container.active {
+            display: block;
+        }
+        .copy-btn {
+            cursor: pointer;
+            color: #007bff;
+        }
+        .copy-btn:hover {
+            color: #0056b3;
+        }
+        .error-msg {
+            color: red;
+            font-weight: bold;
+            display: none;
+        }
+    </style>
+</head>
+<body>
+    <div class="container mt-5">
+        <h2 class="text-center">AES-CBC Encryption for Bitcoin Wallet Passwords</h2>
+        
+        <!-- Form for encrypting -->
+        <div class="mb-3">
+            <label for="inputPhrase" class="form-label">Phrase to encrypt</label>
+            <input type="text" class="form-control" id="inputPhrase" placeholder="Enter phrase">
+        </div>
+        <div class="mb-3">
+            <label for="inputPassword" class="form-label">Password</label>
+            <input type="password" class="form-control" id="inputPassword" placeholder="Enter password">
+        </div>
+        <button class="btn btn-primary" onclick="encryptData()">Generate Encrypted Data</button>
+
+        <hr>
+
+        <!-- Encrypted Data Results -->
+        <h4>Encrypted Data Result</h4>
+        <div class="mb-3">
+            <label for="outputCiphertext" class="form-label">Encrypted Text (Base64)</label>
+            <div class="d-flex">
+                <textarea class="form-control" id="outputCiphertext" rows="3" readonly></textarea>
+                <i class="bi bi-clipboard copy-btn" onclick="copyToClipboard('outputCiphertext')" title="Copy to clipboard" style="align-self: center; margin-left: 10px;"></i>
+            </div>
+        </div>
+        <div class="mb-3">
+            <label for="outputSalt" class="form-label">Salt (Base64)</label>
+            <div class="d-flex">
+                <textarea class="form-control" id="outputSalt" rows="1" readonly></textarea>
+                <i class="bi bi-clipboard copy-btn" onclick="copyToClipboard('outputSalt')" title="Copy to clipboard" style="align-self: center; margin-left: 10px;"></i>
+            </div>
+        </div>
+        <div class="mb-3">
+            <label for="outputIV" class="form-label">IV (Base64)</label>
+            <div class="d-flex">
+                <textarea class="form-control" id="outputIV" rows="1" readonly></textarea>
+                <i class="bi bi-clipboard copy-btn" onclick="copyToClipboard('outputIV')" title="Copy to clipboard" style="align-self: center; margin-left: 10px;"></i>
+            </div>
+        </div>
+        
+        <hr>
+
+        <!-- Form to decrypt -->
+        <h4>Decrypt Data</h4>
+        <div class="mb-3">
+            <label for="inputCiphertext" class="form-label">Encrypted Text (Base64)</label>
+            <input type="text" class="form-control" id="inputCiphertext">
+        </div>
+        <div class="mb-3">
+            <label for="inputSalt" class="form-label">Salt (Base64)</label>
+            <input type="text" class="form-control" id="inputSalt">
+        </div>
+        <div class="mb-3">
+            <label for="inputIV" class="form-label">IV (Base64)</label>
+            <input type="text" class="form-control" id="inputIV">
+        </div>
+        <div class="mb-3">
+            <label for="inputDecryptPassword" class="form-label">Password to Decrypt</label>
+            <input type="password" class="form-control" id="inputDecryptPassword" placeholder="Enter password">
+        </div>
+        <button class="btn btn-success" onclick="decryptData()">Decrypt</button>
+
+        <hr>
+
+        <!-- Decrypted Text Result -->
+        <h4>Original Text (Decrypted)</h4>
+        <div class="mb-3">
+            <textarea class="form-control" id="outputPlaintext" rows="3" readonly></textarea>
+        </div>
+
+        <!-- Error Message -->
+        <p class="error-msg" id="errorMessage">Decryption failed. Please check your password and try again.</p>
+
+        <!-- Loading Spinner -->
+        <div class="spinner-container" id="loadingSpinner">
+            <div class="spinner-border text-primary" role="status">
+                <span class="visually-hidden">Loading...</span>
+            </div>
+            <p>Processing...</p>
+        </div>
+    </div>
+
+    <script>
+
+        // Function to generate encrypted data
+        function encryptData() {
+            const phrase = document.getElementById('inputPhrase').value;
+            const password = document.getElementById('inputPassword').value;
+
+            if (!phrase || !password) {
+                alert("Please enter the phrase and password.");
+                return;
+            }
+
+            // Generate random salt and IV
+            const salt = CryptoJS.lib.WordArray.random(16);
+            const iv = CryptoJS.lib.WordArray.random(16);
+
+            // Derive key using PBKDF2
+            const key = CryptoJS.PBKDF2(password, salt, { keySize: 256 / 32, iterations: 100000 });
+
+            // Encrypt with AES-CBC
+            const cipher = CryptoJS.AES.encrypt(phrase, key, { iv: iv, padding: CryptoJS.pad.Pkcs7 });
+
+            // Display results
+            document.getElementById('outputCiphertext').value = cipher.ciphertext.toString(CryptoJS.enc.Base64);
+            document.getElementById('outputSalt').value = salt.toString(CryptoJS.enc.Base64);
+            document.getElementById('outputIV').value = iv.toString(CryptoJS.enc.Base64);
+
+            showLoadingSpinner(false);  // Hide spinner
+        }
+
+        // Function to decrypt the data
+        function decryptData() {
+            const ciphertextBase64 = document.getElementById('inputCiphertext').value;
+            const saltBase64 = document.getElementById('inputSalt').value;
+            const ivBase64 = document.getElementById('inputIV').value;
+            const password = document.getElementById('inputDecryptPassword').value;
+
+            if (!ciphertextBase64 || !saltBase64 || !ivBase64 || !password) {
+                alert("Please fill in all fields.");
+                return;
+            }
+
+            const ciphertext = CryptoJS.enc.Base64.parse(ciphertextBase64);
+            const salt = CryptoJS.enc.Base64.parse(saltBase64);
+            const iv = CryptoJS.enc.Base64.parse(ivBase64);
+
+            const key = CryptoJS.PBKDF2(password, salt, { keySize: 256 / 32, iterations: 100000 });
+
+            try {
+                const decrypted = CryptoJS.AES.decrypt({ ciphertext: ciphertext }, key, {
+                    iv: iv,
+                    padding: CryptoJS.pad.Pkcs7
+                });
+
+                // Show decrypted text
+                document.getElementById('outputPlaintext').value = decrypted.toString(CryptoJS.enc.Utf8);
+                document.getElementById('errorMessage').style.display = 'none';  // Hide error message on success
+            } catch (e) {
+                // Show error message if decryption fails
+                document.getElementById('outputPlaintext').value = '';  // Clear output
+                document.getElementById('errorMessage').style.display = 'block';  // Show error message
+            }
+        }
+
+        // Function to copy content to clipboard
+        function copyToClipboard(elementId) {
+            const textToCopy = document.getElementById(elementId);
+            textToCopy.select();
+            document.execCommand('copy');
+            alert("Text copied to clipboard!");
+        }
+    </script>
+</body>
+</html>
+
